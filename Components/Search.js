@@ -4,7 +4,7 @@ import React from 'react'
 import { StyleSheet, View, TextInput, Button, Text, FlatList, ActivityIndicator } from 'react-native'
 import FilmItem from './FilmItem'
 import { getFilmsFromApiWithSearchedText } from '../API/TMDBApi'
-
+import { connect } from 'react-redux'
 
 class Search extends React.Component {
 
@@ -15,7 +15,7 @@ class Search extends React.Component {
     this.searchedText = "" // Initialisation de notre donnée searchedText en dehors du state
     this.state = {
       films: [],
-      isLoading: false
+      isLoading: false,
     }
   }
 
@@ -52,10 +52,15 @@ class Search extends React.Component {
     this.page = 0
     this.totalPages = 0
     this.setState({
-      films:[]
-    })
-    console.log("Pages : " + this.page + " / TotalPages : " + this.totalPages + " / Nombre de films : " + this.state.films.length)
-    this._loadFilms()
+      films: []
+    }, () => {
+      console.log("Pages : " + this.page + " / TotalPages : " + this.totalPages + " / Nombre de films : " + this.state.films.length)
+      this._loadFilms()}
+    )  
+  }
+
+  _displayDetailForFilm = (idFilm) =>{
+    this.props.navigation.navigate("FilmDetail", {idFilm: idFilm})
   }
 
   render() {
@@ -71,12 +76,13 @@ class Search extends React.Component {
         <Button title='Rechercher' onPress={() => this._searchFilms()}/>
         <FlatList
           data={this.state.films}
+          extraData={this.props.favoritesFilm}
           keyExtractor={(item) => item.id.toString()}
           onEndReachedThreshold={0.5}
           onEndReached={() => {if (this.page < this.totalPages) {
             this._loadFilms()
           }}}
-          renderItem={({item}) => <FilmItem film={item}/>}
+          renderItem={({ item }) => <FilmItem film={item} displayDetailForFilm={this._displayDetailForFilm} />}
         />
         {this._displayLoading()}
       </View>
@@ -87,7 +93,6 @@ class Search extends React.Component {
 const styles = StyleSheet.create({
   main_container: {
     flex: 1,
-    marginTop: 20
   },
   textinput: {
     marginLeft: 5,
@@ -108,4 +113,13 @@ const styles = StyleSheet.create({
   }
 })
 
-export default Search
+
+
+const mapStateToProps = (state) => {
+  return {
+    favoritesFilm: state.favoritesFilm
+  }
+}
+
+// export default Search
+export default connect(mapStateToProps)(Search)

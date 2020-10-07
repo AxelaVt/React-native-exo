@@ -1,13 +1,30 @@
 import React from 'react'
-import { StyleSheet, View, Text, Image} from 'react-native'
+import { StyleSheet, View, Text, Image, TouchableOpacity} from 'react-native'
 import { getImageFromApi } from '../API/TMDBApi'
 
 class FilmItem extends React.Component {
+
+  _displayFavoriteImage() {
+    if (this.props.isFilmFavorite) {
+      // Si la props isFilmFavorite vaut true, on affiche le 🖤
+      return (
+        <Image
+          style={styles.favorite_image}
+          source={require('../Images/favorite.png')}
+        />
+      )
+    }
+  }
+
   render() {
     console.log(this.props);
-    const film = this.props.film
+    // const film = this.props.film
+    // const displayDetailForFilm = this.props.displayDetailForFilm
+    const {film, displayDetailForFilm} = this.props
     return (
-      <View style={styles.main_container}>
+      <TouchableOpacity
+        onPress={() => displayDetailForFilm(film.id)}
+        style={styles.main_container}>
         <Image
           style={styles.image}
           source={{uri: getImageFromApi(film.poster_path)}}
@@ -23,7 +40,7 @@ class FilmItem extends React.Component {
           <View style={styles.dateView}><Text style={styles.date_text}>Sorti le {film.release_date}</Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     )
   }
 }
