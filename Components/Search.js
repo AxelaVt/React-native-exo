@@ -1,98 +1,99 @@
 // Components/Search.js
 
 import React from 'react'
-import { StyleSheet, View, TextInput, Button, Text, FlatList, ActivityIndicator } from 'react-native'
+import { StyleSheet, View, TextInput, Button, Text, FlatList, ActivityIndicator, SafeAreaView } from 'react-native'
 import FilmItem from './FilmItem'
 import { getFilmsFromApiWithSearchedText } from '../API/TMDBApi'
 import { connect } from 'react-redux'
+import FilmList from './FilmList'
 
 class Search extends React.Component {
 
   constructor(props) {
     super(props)
+    this.searchedText = ""
     this.page = 0
     this.totalPages = 0
-    this.searchedText = "" // Initialisation de notre donnée searchedText en dehors du state
     this.state = {
       films: [],
-      isLoading: false,
+      isLoading: false
     }
+    this._loadFilms = this._loadFilms.bind(this)
   }
 
   _loadFilms() {
-    this.setState({isLoading: true})
-    if (this.searchedText.length > 0) { // Seulement si le texte recherché n'est pas vide
-      getFilmsFromApiWithSearchedText(this.searchedText, this.page+1).then(data => {
+    if (this.searchedText.length > 0) {
+      this.setState({ isLoading: true })
+      getFilmsFromApiWithSearchedText(this.searchedText, this.page + 1).then(data => {
         this.page = data.page
         this.totalPages = data.total_pages
-          this.setState({
-            films: [ ...this.state.films, ...data.results ],
-            //films:  this.state.films.concat(data.results),  idem ligne au dessus
-            isLoading: false
-          })
+        this.setState({
+          films: [...this.state.films, ...data.results],
+          isLoading: false
+        })
       })
     }
   }
 
-  _displayLoading(){
-    if(this.state.isLoading){
+  _searchTextInputChanged(text) {
+    this.searchedText = text
+  }
+
+  _searchFilms() {
+    this.page = 0
+    this.totalPages = 0
+    this.setState({
+      films: [],
+    }, () => {
+      this._loadFilms()
+    })
+  }
+
+  _displayDetailForFilm = (idFilm) => {
+    console.log("Display film with id " + idFilm)
+    this.props.navigation.navigate("FilmDetail", { idFilm: idFilm })
+  }
+
+  _displayLoading() {
+    if (this.state.isLoading) {
       return (
         <View style={styles.loading_container}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size='large' />
         </View>
       )
     }
   }
 
-  _searchTextInputChanged(text) {
-    this.searchedText = text // Modification du texte recherché à chaque saisie de texte, sans passer par le setState comme avant
-  }
-
-  _searchFilms(){
-    this.page = 0
-    this.totalPages = 0
-    this.setState({
-      films: []
-    }, () => {
-      console.log("Pages : " + this.page + " / TotalPages : " + this.totalPages + " / Nombre de films : " + this.state.films.length)
-      this._loadFilms()}
-    )  
-  }
-
-  _displayDetailForFilm = (idFilm) =>{
-    this.props.navigation.navigate("FilmDetail", {idFilm: idFilm})
-  }
-
   render() {
-    console.log(this.state.isLoading);
     return (
-      <View style={styles.main_container}>
-        <TextInput
-          onSubmitEditing={()=>this._searchFilms()}
-          style={styles.textinput}
-          placeholder='Titre du film'
-          onChangeText={(text) => this._searchTextInputChanged(text)}
-        />
-        <Button title='Rechercher' onPress={() => this._searchFilms()}/>
-        <FlatList
-          data={this.state.films}
-          extraData={this.props.favoritesFilm}
-          keyExtractor={(item) => item.id.toString()}
-          onEndReachedThreshold={0.5}
-          onEndReached={() => {if (this.page < this.totalPages) {
-            this._loadFilms()
-          }}}
-          renderItem={({ item }) => <FilmItem film={item} displayDetailForFilm={this._displayDetailForFilm} />}
-        />
-        {this._displayLoading()}
-      </View>
+      <SafeAreaView style={styles.main_container}>
+        <View style={styles.main_container}>
+          <TextInput
+            style={styles.textinput}
+            placeholder='Titre du film'
+            onChangeText={(text) => this._searchTextInputChanged(text)}
+            onSubmitEditing={() => this._searchFilms()}
+          />
+          <Button title='Rechercher' onPress={() => this._searchFilms()} />
+          <FilmList
+            loadFilms={this._loadFilms}
+            films={this.state.films} // C'est bien le component Search qui récupère les films depuis l'API et on les transmet ici pour que le component FilmList les affiche
+            navigation={this.props.navigation} // Ici on transmet les informations de navigation pour permettre au component FilmList de naviguer vers le détail d'un film
+            loadFilms={this._loadFilms} // _loadFilm charge les films suivants, ça concerne l'API, le component FilmList va juste appeler cette méthode quand l'utilisateur aura parcouru tous les films et c'est le component Search qui lui fournira les films suivants
+            page={this.page}
+            totalPages={this.totalPages} // les infos page et totalPages vont être utile, côté component FilmList, pour ne pas déclencher l'évènement pour charger plus de film si on a atteint la dernière page
+            favoriteList={false} // Ici j'ai simplement ajouté un booléen à false pour indiquer qu'on n'est pas dans le cas de l'affichage de la liste des films favoris. Et ainsi pouvoir déclencher le chargement de plus de films lorsque l'utilisateur scrolle.
+          />
+          {this._displayLoading()}
+        </View>
+      </SafeAreaView>
     )
   }
 }
 
 const styles = StyleSheet.create({
   main_container: {
-    flex: 1,
+    flex: 1
   },
   textinput: {
     marginLeft: 5,
@@ -106,20 +107,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
     top: 100,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center'
   }
 })
 
-
-
-const mapStateToProps = (state) => {
+// On connecte le store Redux, ainsi que les films favoris du state de notre application, à notre component Search
+const mapStateToProps = state => {
   return {
     favoritesFilm: state.favoritesFilm
   }
 }
 
-// export default Search
 export default connect(mapStateToProps)(Search)
